@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-#  APK Inspector — Installer Script (v1)
+#  APK Inspector — Installer Script
 #  Ubuntu 20.04 / 22.04 / 24.04
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -13,11 +13,13 @@ warn()    { echo -e "${YLW}[WARN]${NC}  $*"; }
 
 INSTALL_DIR="$HOME/.local/share/apk-inspector"
 NAUTILUS_SCRIPTS_DIR="$HOME/.local/share/nautilus/scripts"
+NAUTILUS_SCRIPT="$NAUTILUS_SCRIPTS_DIR/Get APK Details"
 ACTIONS_DIR="$HOME/.local/share/file-manager/actions"
+NAUTILUS_EXT="$HOME/.local/share/nautilus-python/extensions/apk_inspector_nautilus.py"
 
 echo ""
 echo -e "${BLU}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLU}║       APK Inspector — Installer v2         ║${NC}"
+echo -e "${BLU}║       APK Inspector — Installer v4         ║${NC}"
 echo -e "${BLU}║   Malware Analysis Context Menu Tool       ║${NC}"
 echo -e "${BLU}╚════════════════════════════════════════════╝${NC}"
 echo ""
@@ -27,12 +29,12 @@ info "Creating install directories…"
 mkdir -p "$INSTALL_DIR" "$NAUTILUS_SCRIPTS_DIR"
 success "Directories ready."
 
-# ─── Step 2: Remove old action file (this caused the single-click crash) ──────
-info "Removing old file-manager action file (crash fix)…"
+# ─── Step 2: Remove other integrations (keep Scripts submenu only) ─────────────
+info "Removing file-manager actions and Nautilus extension (if present)…"
 rm -f "$ACTIONS_DIR/apk-inspector.desktop"
-# Also remove any leftover .desktop files that might register as APK handlers
 rm -f "$HOME/.local/share/applications/apk-inspector.desktop"
-success "Old action file removed."
+rm -f "$NAUTILUS_EXT"
+success "Legacy integrations removed."
 
 # ─── Step 3: Copy core script ─────────────────────────────────────────────────
 info "Installing core Python script to $INSTALL_DIR…"
@@ -41,31 +43,26 @@ cp "$SCRIPT_SRC" "$INSTALL_DIR/apk_inspector.py"
 chmod +x "$INSTALL_DIR/apk_inspector.py"
 success "Core script installed."
 
-# ─── Step 4: Install Nautilus Script (right-click Scripts submenu ONLY) ───────
-info "Installing Nautilus script…"
-NAUTILUS_SCRIPT="$NAUTILUS_SCRIPTS_DIR/Get APK Details"
+# ─── Step 4: Install Nautilus Script (Scripts submenu) ────────────────────────
+info "Installing Nautilus script (Scripts → Get APK Details)…"
 
 cat > "$NAUTILUS_SCRIPT" << 'NSCRIPT'
 #!/usr/bin/env bash
 # APK Inspector — Nautilus Script
-# Only runs when explicitly invoked via right-click → Scripts → Get APK Details
-# NAUTILUS_SCRIPT_SELECTED_FILE_PATHS is set by Nautilus only in this context.
+# Invoked via right-click → Scripts → Get APK Details
 
 INSPECTOR="$HOME/.local/share/apk-inspector/apk_inspector.py"
 
-# Safety: if not called from Nautilus scripts context, do nothing
 if [[ -z "$NAUTILUS_SCRIPT_SELECTED_FILE_PATHS" ]]; then
     exit 0
 fi
 
 while IFS= read -r filepath; do
     [[ -z "$filepath" ]] && continue
-    # Only process .apk files
     case "${filepath,,}" in
         *.apk) ;;
         *) continue ;;
     esac
-    # Launch GUI detached — & disowns it so Nautilus doesn't wait or crash
     python3 "$INSPECTOR" "$filepath" &
     disown
 done <<< "$NAUTILUS_SCRIPT_SELECTED_FILE_PATHS"
@@ -87,7 +84,7 @@ cat > "$HOME/.local/share/mime/packages/android-apk.xml" << 'MIME'
 </mime-info>
 MIME
 update-mime-database "$HOME/.local/share/mime" 2>/dev/null || true
-success "MIME type registered (APK only, no ZIP overlap)."
+success "MIME type registered."
 
 # ─── Step 6: Check dependencies ───────────────────────────────────────────────
 echo ""
@@ -128,7 +125,7 @@ success "Nautilus reloaded."
 
 echo ""
 echo -e "${GRN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${GRN}║           APK Inspector v1 installed             ║${NC}"
+echo -e "${GRN}║           APK Inspector installed                ║${NC}"
 echo -e "${GRN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${YLW}How to use:${NC}"

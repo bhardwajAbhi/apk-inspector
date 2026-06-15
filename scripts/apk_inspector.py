@@ -6,6 +6,7 @@ Parses APK files using aapt, apksigner, unzip and displays results in a GTK3 GUI
 
 import sys
 import os
+import json
 import subprocess
 import hashlib
 import zipfile
@@ -372,175 +373,373 @@ class APKParser:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Theme & settings
+# ──────────────────────────────────────────────────────────────────────────────
+CONFIG_DIR = os.path.expanduser("~/.config/apk-inspector")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "settings.json")
+GITHUB_URL = "https://github.com/bhardwajAbhi"
+
+THEME_PALETTES = {
+    "dark": {
+        "accent":        "#5B9CF5",
+        "accent_hover":  "#4A8AE8",
+        "danger":        "#F07178",
+        "warn":          "#FFAD5A",
+        "success":       "#87C98A",
+        "bg_main":       "#1A1B26",
+        "bg_mid":        "#24283B",
+        "bg_card":       "#2F3549",
+        "bg_header":     "#1F2335",
+        "bg_toolbar":    "#1F2335",
+        "bg_footer":     "#161821",
+        "fg_main":       "#C8D0E0",
+        "fg_key":        "#7EB0F7",
+        "fg_dim":        "#8B93A8",
+        "fg_tab_active": "#E8ECF4",
+        "fg_on_accent":  "#FFFFFF",
+        "border":        "#3B4261",
+        "btn_secondary": "#3B4261",
+        "progress_trough":"#2F3549",
+        "danger_row":    "#F07178",
+        "warn_row":      "#FFAD5A",
+        "row_alt":       "#24283B",
+    },
+    "light": {
+        "accent":        "#2563EB",
+        "accent_hover":  "#1D4ED8",
+        "danger":        "#DC2626",
+        "warn":          "#D97706",
+        "success":       "#16A34A",
+        "bg_main":       "#F4F6FA",
+        "bg_mid":        "#FFFFFF",
+        "bg_card":       "#EEF1F7",
+        "bg_header":     "#FFFFFF",
+        "bg_toolbar":    "#FFFFFF",
+        "bg_footer":     "#EEF1F7",
+        "fg_main":       "#2D3348",
+        "fg_key":        "#2563EB",
+        "fg_dim":        "#6B7289",
+        "fg_tab_active": "#1E293B",
+        "fg_on_accent":  "#FFFFFF",
+        "border":        "#D8DEE9",
+        "btn_secondary": "#64748B",
+        "progress_trough":"#E2E8F0",
+        "danger_row":    "#DC2626",
+        "warn_row":      "#D97706",
+        "row_alt":       "#F8FAFC",
+    },
+}
+
+
+def load_settings():
+    try:
+        with open(CONFIG_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+            theme = data.get("theme")
+            if theme in ("light", "dark"):
+                return {"theme": theme}
+            if theme == "system":
+                return {"theme": "light"}
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
+    return {"theme": "light"}
+
+
+def save_settings(settings):
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f, indent=2)
+
+
+def system_prefers_dark():
+    settings = Gtk.Settings.get_default()
+    if settings:
+        return settings.get_property("gtk-application-prefer-dark-theme")
+    return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # GTK3 GUI
 # ──────────────────────────────────────────────────────────────────────────────
 class APKInspectorWindow(Gtk.Window):
-    ACCENT   = "#1E88E5"   # blue
-    DANGER   = "#E53935"   # red
-    WARN     = "#F57C00"   # orange
-    SUCCESS  = "#43A047"   # green
-    BG_DARK  = "#1A1A2E"
-    BG_MID   = "#16213E"
-    BG_CARD  = "#0F3460"
-    FG_MAIN  = "#E0E0E0"
-    FG_DIM   = "#9E9E9E"
+    ACCENT = "#1E88E5"
 
     def __init__(self, apk_path):
         super().__init__(title=f"APK Inspector — {os.path.basename(apk_path)}")
         self.apk_path = apk_path
         self.parsed_data = {}
+        self.settings = load_settings()
+        self.theme_mode = self.settings.get("theme", "light")
+        self.css_provider = None
+        self._tree_stores = []
+        self._tree_views = []
+        self._updating_theme = False
 
         self.set_default_size(1000, 720)
         self.set_border_width(0)
-        self._apply_css()
+        self._apply_theme()
 
         # ── Layout ──────────────────────────────────────────────────────────
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add(vbox)
 
-        # Header bar
         header = self._make_header()
         vbox.pack_start(header, False, False, 0)
 
-        # Progress bar (shown during loading)
         self.progress_bar = Gtk.ProgressBar()
         self.progress_bar.set_text("Parsing APK…")
         self.progress_bar.set_show_text(True)
         self.progress_bar.get_style_context().add_class("progress-bar")
         vbox.pack_start(self.progress_bar, False, False, 0)
 
-        # Notebook (tabs)
         self.notebook = Gtk.Notebook()
         self.notebook.set_tab_pos(Gtk.PositionType.LEFT)
         self.notebook.get_style_context().add_class("notebook")
         vbox.pack_start(self.notebook, True, True, 0)
 
-        # Bottom toolbar
         toolbar = self._make_toolbar()
         vbox.pack_start(toolbar, False, False, 0)
 
+        footer = self._make_footer()
+        vbox.pack_start(footer, False, False, 0)
+
         self.show_all()
         self.progress_bar.hide()
-
-        # Start parsing in background
         self._start_parsing()
 
-    def _apply_css(self):
+    def _effective_theme_name(self):
+        return self.theme_mode if self.theme_mode in ("light", "dark") else "light"
+
+    def _palette(self):
+        return THEME_PALETTES[self._effective_theme_name()]
+
+    def _row_value_color(self, key, value, p):
+        display_v = str(value)
+        if "🚨" in display_v or "DANGEROUS" in display_v:
+            return p["danger_row"]
+        if "⚠" in display_v or "WARNING" in display_v or "YES ⚠" in display_v:
+            return p["warn_row"]
+        if "Error" in key or "Error" in display_v:
+            return p["danger_row"]
+        return p["fg_main"]
+
+    def _apply_theme(self):
+        p = self._palette()
+        self.ACCENT = p["accent"]
+        theme = self._effective_theme_name()
+
+        ctx = self.get_style_context()
+        ctx.remove_class("theme-dark")
+        ctx.remove_class("theme-light")
+        ctx.add_class(f"theme-{theme}")
+
         css = f"""
-        window {{
-            background-color: {self.BG_DARK};
+        window.theme-dark, window.theme-light {{
+            background-color: {p['bg_main']};
+            color: {p['fg_main']};
         }}
-        .header-bar {{
-            background-color: #0D1B2A;
+        window .header-bar {{
+            background-color: {p['bg_header']};
             padding: 10px 16px;
-            border-bottom: 2px solid {self.ACCENT};
+            border-bottom: 1px solid {p['border']};
         }}
-        .header-title {{
+        window .header-title {{
             font-size: 16px;
             font-weight: bold;
-            color: {self.ACCENT};
+            color: {p['accent']};
         }}
-        .header-sub {{
+        window .header-sub {{
             font-size: 11px;
-            color: {self.FG_DIM};
+            color: {p['fg_dim']};
         }}
-        notebook tab {{
+        window .theme-icon {{
+            font-size: 13px;
+            color: {p['fg_dim']};
+        }}
+        window switch {{
+            margin: 0 2px;
+        }}
+        window notebook tab {{
             padding: 8px 14px;
-            min-width: 160px;
-            color: {self.FG_DIM};
-            background-color: {self.BG_MID};
+            min-width: 150px;
+            background-color: {p['bg_mid']};
             border-radius: 4px 0 0 4px;
             margin: 2px 0;
         }}
-        notebook tab:checked {{
-            color: #FFFFFF;
-            background-color: {self.BG_CARD};
-            border-left: 3px solid {self.ACCENT};
+        window notebook tab:checked {{
+            background-color: {p['bg_card']};
+            border-left: 3px solid {p['accent']};
         }}
-        notebook > header {{
-            background-color: {self.BG_MID};
-            border-right: 1px solid #333;
+        window notebook > header {{
+            background-color: {p['bg_mid']};
+            border-right: 1px solid {p['border']};
         }}
-        .card {{
-            background-color: {self.BG_CARD};
-            border-radius: 6px;
-            padding: 4px;
-            margin: 6px;
+        window .tab-label {{
+            color: {p['fg_dim']};
         }}
-        treeview {{
-            background-color: {self.BG_MID};
-            color: {self.FG_MAIN};
+        window notebook tab:checked .tab-label {{
+            color: {p['fg_tab_active']};
+            font-weight: 600;
+        }}
+        window treeview {{
+            background-color: {p['bg_mid']};
+            color: {p['fg_main']};
             font-family: monospace;
             font-size: 12px;
         }}
-        treeview:selected {{
-            background-color: {self.ACCENT};
-            color: white;
+        window treeview:selected {{
+            background-color: {p['accent']};
+            color: {p['fg_on_accent']};
         }}
-        treeview header button {{
-            background-color: {self.BG_CARD};
-            color: {self.ACCENT};
+        window treeview header {{
+            background-color: {p['bg_card']};
+        }}
+        window treeview header button {{
+            background-color: {p['bg_card']};
+            color: {p['accent']};
             font-weight: bold;
             border: none;
-            padding: 4px;
+            padding: 6px 4px;
         }}
-        .toolbar-bottom {{
-            background-color: #0D1B2A;
+        window treeview header button label {{
+            color: {p['accent']};
+        }}
+        window .toolbar-bottom {{
+            background-color: {p['bg_toolbar']};
             padding: 8px 12px;
-            border-top: 1px solid #333;
+            border-top: 1px solid {p['border']};
         }}
-        .btn-primary {{
-            background-color: {self.ACCENT};
-            color: white;
-            border-radius: 4px;
-            padding: 4px 14px;
+        window .toolbar-bottom button {{
             border: none;
-            font-weight: bold;
+            border-radius: 6px;
+            padding: 6px 14px;
+            box-shadow: none;
+            outline: none;
+            background-image: none;
+            -gtkoutline-radius: 6px;
         }}
-        .btn-primary:hover {{
-            background-color: #1565C0;
-        }}
-        .btn-secondary {{
-            background-color: #37474F;
-            color: white;
-            border-radius: 4px;
-            padding: 4px 14px;
+        window .toolbar-bottom button:focus,
+        window .toolbar-bottom button:active,
+        window .toolbar-bottom button:hover {{
+            box-shadow: none;
+            outline: none;
             border: none;
         }}
-        .btn-danger {{
-            background-color: {self.DANGER};
-            color: white;
-            border-radius: 4px;
-            padding: 4px 14px;
-            border: none;
-            font-weight: bold;
+        window button.btn-primary {{
+            background-color: {p['accent']};
+            color: {p['fg_on_accent']};
+            font-weight: 600;
         }}
-        .status-ok   {{ color: {self.SUCCESS}; font-weight: bold; }}
-        .status-warn {{ color: {self.WARN};    font-weight: bold; }}
-        .status-bad  {{ color: {self.DANGER};  font-weight: bold; }}
-        scrolledwindow {{ background-color: {self.BG_MID}; }}
-        label {{ color: {self.FG_MAIN}; }}
-        progressbar trough {{ background-color: #333; }}
-        progressbar progress {{ background-color: {self.ACCENT}; }}
+        window button.btn-primary:hover {{
+            background-color: {p['accent_hover']};
+        }}
+        window button.btn-primary label,
+        window button.btn-secondary label {{
+            color: {p['fg_on_accent']};
+            background-color: transparent;
+            background-image: none;
+        }}
+        window button.btn-secondary {{
+            background-color: {p['btn_secondary']};
+            color: {p['fg_on_accent']};
+        }}
+        window button.btn-secondary:hover {{
+            background-color: {p['btn_secondary']};
+            opacity: 0.92;
+        }}
+        window .footer-bar {{
+            background-color: {p['bg_footer']};
+            padding: 6px 16px;
+            border-top: 1px solid {p['border']};
+        }}
+        window .footer-text {{
+            font-size: 11px;
+            color: {p['fg_dim']};
+        }}
+        window .footer-link, window .footer-link label {{
+            font-size: 11px;
+            color: {p['accent']};
+        }}
+        window .status-ok   {{ color: {p['success']}; font-weight: bold; }}
+        window .status-warn {{ color: {p['warn']};    font-weight: bold; }}
+        window .status-bad  {{ color: {p['danger']};  font-weight: bold; }}
+        window scrolledwindow {{
+            background-color: {p['bg_mid']};
+            border: none;
+        }}
+        window label {{
+            color: {p['fg_main']};
+        }}
+        window progressbar trough {{
+            background-color: {p['progress_trough']};
+            border-radius: 4px;
+        }}
+        window progressbar progress {{
+            background-color: {p['accent']};
+            border-radius: 4px;
+        }}
+        window progressbar text {{
+            color: {p['fg_main']};
+            font-size: 11px;
+        }}
         """
-        provider = Gtk.CssProvider()
-        provider.load_from_data(css.encode())
+        if self.css_provider:
+            Gtk.StyleContext.remove_provider_for_screen(
+                Gdk.Screen.get_default(), self.css_provider
+            )
+        self.css_provider = Gtk.CssProvider()
+        self.css_provider.load_from_data(css.encode())
         Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), provider,
+            Gdk.Screen.get_default(), self.css_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
+        self._refresh_tree_colors()
+        if hasattr(self, "theme_switch"):
+            self._updating_theme = True
+            self.theme_switch.set_active(theme == "dark")
+            self._updating_theme = False
+
+    def _refresh_tree_colors(self):
+        p = self._palette()
+        for store, rows in self._tree_stores:
+            for i, (key, value) in enumerate(rows):
+                iter_ = store.get_iter((i,))
+                if iter_:
+                    store.set_value(iter_, 2, self._row_value_color(key, value, p))
+                    store.set_value(iter_, 3, p["fg_key"])
+        for tv in self._tree_views:
+            tv.queue_draw()
+
+    def _cell_fg_func(self, tv, color_col):
+        def func(_col, cell, model, iter_, _data):
+            cell.set_property("foreground-set", True)
+            if tv.get_selection().iter_is_selected(iter_):
+                cell.set_property("foreground", self._palette()["fg_on_accent"])
+            else:
+                cell.set_property("foreground", model.get_value(iter_, color_col))
+        return func
+
+    def _on_theme_switch(self, switch, _pspec):
+        if self._updating_theme:
+            return
+        new_mode = "dark" if switch.get_active() else "light"
+        if new_mode == self.theme_mode:
+            return
+        self.theme_mode = new_mode
+        self.settings["theme"] = self.theme_mode
+        save_settings(self.settings)
+        self._apply_theme()
 
     def _make_header(self):
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         box.get_style_context().add_class("header-bar")
 
-        # Icon placeholder
-        icon_label = Gtk.Label(label="📦")
+        icon_label = Gtk.Label()
         icon_label.set_markup('<span size="xx-large">📦</span>')
         box.pack_start(icon_label, False, False, 0)
 
         info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        title = Gtk.Label(label=f"APK Inspector")
+        title = Gtk.Label(label="APK Inspector")
         title.get_style_context().add_class("header-title")
         title.set_halign(Gtk.Align.START)
 
@@ -552,7 +751,61 @@ class APKInspectorWindow(Gtk.Window):
         info_box.pack_start(sub, False, False, 0)
         box.pack_start(info_box, True, True, 0)
 
+        theme_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        theme_box.set_valign(Gtk.Align.CENTER)
+
+        sun_icon = Gtk.Label(label="☀")
+        sun_icon.get_style_context().add_class("theme-icon")
+
+        self.theme_switch = Gtk.Switch()
+        self.theme_switch.set_active(self.theme_mode == "dark")
+        self.theme_switch.set_tooltip_text("Toggle dark mode")
+        self.theme_switch.connect("notify::active", self._on_theme_switch)
+
+        moon_icon = Gtk.Label(label="🌙")
+        moon_icon.get_style_context().add_class("theme-icon")
+
+        theme_box.pack_start(sun_icon, False, False, 0)
+        theme_box.pack_start(self.theme_switch, False, False, 0)
+        theme_box.pack_start(moon_icon, False, False, 0)
+        box.pack_end(theme_box, False, False, 0)
+
         return box
+
+    def _make_footer(self):
+        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        outer.get_style_context().add_class("footer-bar")
+        outer.set_hexpand(True)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        box.set_halign(Gtk.Align.CENTER)
+        box.set_valign(Gtk.Align.CENTER)
+
+        made_by = Gtk.Label(label="Made by")
+        made_by.get_style_context().add_class("footer-text")
+
+        author_link = Gtk.LinkButton(
+            uri=GITHUB_URL,
+            label="Abhishek Bhardwaj"
+        )
+        author_link.get_style_context().add_class("footer-link")
+
+        sep = Gtk.Label(label="·")
+        sep.get_style_context().add_class("footer-text")
+
+        github_link = Gtk.LinkButton(
+            uri=GITHUB_URL,
+            label="github.com/bhardwajAbhi"
+        )
+        github_link.get_style_context().add_class("footer-link")
+
+        box.pack_start(made_by, False, False, 0)
+        box.pack_start(author_link, False, False, 0)
+        box.pack_start(sep, False, False, 0)
+        box.pack_start(github_link, False, False, 0)
+
+        outer.pack_start(box, True, True, 0)
+        return outer
 
     def _make_toolbar(self):
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -560,14 +813,17 @@ class APKInspectorWindow(Gtk.Window):
         box.set_border_width(4)
 
         btn_jadx = Gtk.Button(label="⚙  Open in JADX-GUI")
+        btn_jadx.set_relief(Gtk.ReliefStyle.NONE)
         btn_jadx.get_style_context().add_class("btn-primary")
         btn_jadx.connect("clicked", self._on_open_jadx)
 
         btn_export = Gtk.Button(label="💾  Export to Text")
+        btn_export.set_relief(Gtk.ReliefStyle.NONE)
         btn_export.get_style_context().add_class("btn-secondary")
         btn_export.connect("clicked", self._on_export)
 
         btn_copy_hash = Gtk.Button(label="📋  Copy SHA-256")
+        btn_copy_hash.set_relief(Gtk.ReliefStyle.NONE)
         btn_copy_hash.get_style_context().add_class("btn-secondary")
         btn_copy_hash.connect("clicked", self._on_copy_hash)
 
@@ -626,6 +882,7 @@ class APKInspectorWindow(Gtk.Window):
             data = self.parsed_data[section_key]
             page = self._make_data_page(data, section_key)
             label_widget = Gtk.Label(label=tab_label)
+            label_widget.get_style_context().add_class("tab-label")
             label_widget.set_halign(Gtk.Align.START)
             self.notebook.append_page(page, label_widget)
 
@@ -642,52 +899,48 @@ class APKInspectorWindow(Gtk.Window):
             sw.add(lbl)
             return sw
 
-        # TreeView with 2 columns: Key | Value
-        store = Gtk.ListStore(str, str, str)  # key, value, row_color
-
-        DANGEROUS_COLOR = "#FF5252"
-        WARNING_COLOR   = "#FFA726"
-        NORMAL_COLOR    = self.FG_MAIN
+        # TreeView: key | value | value_color | key_color
+        store = Gtk.ListStore(str, str, str, str)
+        p = self._palette()
+        rows = []
 
         for k, v in data.items():
-            color = NORMAL_COLOR
             display_v = str(v)
-            if "🚨" in display_v or "DANGEROUS" in display_v:
-                color = DANGEROUS_COLOR
-            elif "⚠" in display_v or "WARNING" in display_v or "YES ⚠" in display_v:
-                color = WARNING_COLOR
-            elif "Error" in k or "Error" in display_v:
-                color = DANGEROUS_COLOR
-            store.append([str(k), display_v, color])
+            val_color = self._row_value_color(k, display_v, p)
+            store.append([str(k), display_v, val_color, p["fg_key"]])
+            rows.append((str(k), display_v))
+
+        self._tree_stores.append((store, rows))
 
         tv = Gtk.TreeView(model=store)
         tv.set_grid_lines(Gtk.TreeViewGridLines.HORIZONTAL)
         tv.set_rules_hint(True)
         tv.get_style_context().add_class("data-view")
+        self._tree_views.append(tv)
 
-        # Column: Key
         col_key = Gtk.TreeViewColumn("Property")
         col_key.set_min_width(220)
         col_key.set_resizable(True)
         cell_key = Gtk.CellRendererText()
-        cell_key.set_property("foreground", self.ACCENT)
         cell_key.set_property("weight", Pango.Weight.BOLD)
-        cell_key.set_property("xpad", 10)
-        cell_key.set_property("ypad", 6)
+        cell_key.set_property("xpad", 12)
+        cell_key.set_property("ypad", 7)
         col_key.pack_start(cell_key, True)
         col_key.add_attribute(cell_key, "text", 0)
+        col_key.set_cell_data_func(cell_key, self._cell_fg_func(tv, 3))
 
-        # Column: Value
         col_val = Gtk.TreeViewColumn("Value")
         col_val.set_expand(True)
         col_val.set_resizable(True)
         cell_val = Gtk.CellRendererText()
-        cell_val.set_property("xpad", 10)
-        cell_val.set_property("ypad", 6)
+        cell_val.set_property("xpad", 12)
+        cell_val.set_property("ypad", 7)
         cell_val.set_property("ellipsize", Pango.EllipsizeMode.END)
         col_val.pack_start(cell_val, True)
         col_val.add_attribute(cell_val, "text", 1)
-        col_val.add_attribute(cell_val, "foreground", 2)
+        col_val.set_cell_data_func(cell_val, self._cell_fg_func(tv, 2))
+
+        tv.get_selection().connect("changed", lambda *_: tv.queue_draw())
 
         tv.append_column(col_key)
         tv.append_column(col_val)

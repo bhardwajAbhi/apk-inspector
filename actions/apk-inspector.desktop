@@ -1,4 +1,6 @@
 [Desktop Entry]
+# Legacy file-manager action — not used by install.sh (v3+).
+# Main menu integration uses extensions/apk_inspector_nautilus.py instead.
 Type=Action
 Name=Get APK Details
 Icon=utilities-terminal
@@ -8,6 +10,6 @@ Profiles=profile-apk;
 
 [X-Action-Profile profile-apk]
 MimeTypes=application/vnd.android.package-archive;
-SelectionCount=any
-Exec=python3 /home/%u/.local/share/apk-inspector/apk_inspector.py %f
-Name=Get APK Details
+SelectionCount=1
+Targets=files;
+Exec=python3 %h/.local/share/apk-inspector/apk_inspector.py %f

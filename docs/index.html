@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APK Inspector — Right-click APK analysis for Ubuntu</title>
+  <meta name="description" content="One-click APK analysis from Ubuntu's file manager. Permissions, certificates, hashes, and strings in a single window.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<nav>
+  <a href="#" class="nav-brand"><span>📦</span> APK Inspector</a>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
+    <li><a href="#platforms">Platforms</a></li>
+    <li><a href="#install">Install</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="https://github.com/bhardwajAbhi/apk-inspector" class="nav-cta" target="_blank" rel="noopener">GitHub</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge"><span class="dot"></span> Ubuntu / Nautilus — available now</div>
+    <h1>Right-click an APK.<br>See everything inside it.</h1>
+    <p class="lead lead-centered">
+      APK Inspector adds APK analysis directly to your file manager.
+      Metadata, permissions, signatures, and strings — in one window.
+    </p>
+    <div class="hero-buttons">
+      <a href="#install" class="btn btn-primary">Install</a>
+      <a href="https://github.com/bhardwajAbhi/apk-inspector" class="btn btn-outline" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<section id="problem">
+  <div class="container section-intro">
+    <span class="section-label">The Problem</span>
+    <h2>APK analysis takes too many steps</h2>
+    <p class="lead">
+      Analyzing an APK usually means switching between the terminal, multiple command-line tools,
+      a browser for hash lookups, and separate windows for certificates and permissions.
+      APK Inspector brings that workflow into Nautilus via a single Scripts menu action.
+    </p>
+
+    <div class="card-grid grid-3">
+      <div class="card">
+        <div class="card-icon">🔧</div>
+        <h3>Multiple tools</h3>
+        <p>Metadata, signing, certificates, and contents often require separate commands and parsers.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⏱</div>
+        <h3>Slow triage</h3>
+        <p>Copying hashes, checking permissions, and reviewing manifests adds friction to every sample.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📂</div>
+        <h3>Disconnected workflow</h3>
+        <p>The APK is in your file manager, but the analysis tools live elsewhere on your system.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container section-intro">
+    <span class="section-label">The Solution</span>
+    <h2>One click. Structured results.</h2>
+    <p class="lead">
+      Right-click any <code>.apk</code> file in Nautilus, open <strong>Scripts → Get APK Details</strong>,
+      and a clean GTK window opens with organized tabs for every major analysis area.
+    </p>
+
+    <div class="card-grid grid-3">
+      <div class="card">
+        <div class="card-icon">🗂</div>
+        <h3>File Info</h3>
+        <p>Size, MD5, SHA-256. Copy hashes in one click.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔐</div>
+        <h3>Permissions</h3>
+        <p>All declared permissions. Dangerous ones highlighted.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">✍</div>
+        <h3>Signing &amp; Certs</h3>
+        <p>Signature schemes, issuer, validity, and fingerprints.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧩</div>
+        <h3>Components</h3>
+        <p>Activities, services, receivers, and providers.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔍</div>
+        <h3>Strings</h3>
+        <p>URLs, IPs, emails, API keys, and crypto addresses.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h3>Light &amp; Dark</h3>
+        <p>Clean light theme by default. Toggle dark mode anytime.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Right-click your APK</h3>
+          <p>Open any <code>.apk</code> file location in Ubuntu Files (Nautilus).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Scripts → Get APK Details</h3>
+          <p>Select the option from the Scripts submenu in the context menu.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Review, export, or decompile</h3>
+          <p>Copy any row, export a report, or open the APK in JADX-GUI.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screenshots">
+  <div class="container section-intro">
+    <span class="section-label">Screenshots</span>
+    <h2>Preview</h2>
+
+    <div class="card-grid grid-3 screenshot-grid">
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="☀ Light theme" aria-label="View light theme screenshot">
+          <img src="assets/screenshots/main-window-light.png" alt="Main window — light theme">
+        </button>
+        <figcaption>☀ Light theme</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="🌙 Dark theme" aria-label="View dark theme screenshot">
+          <img src="assets/screenshots/main-window-dark.png" alt="Main window — dark theme">
+        </button>
+        <figcaption>🌙 Dark theme</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="🗂 File Info" aria-label="View File Info screenshot">
+          <img src="assets/screenshots/tab-file-info.png" alt="File Info tab">
+        </button>
+        <figcaption>🗂 File Info</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="📋 Metadata" aria-label="View Metadata screenshot">
+          <img src="assets/screenshots/tab-metadata.png" alt="Metadata tab">
+        </button>
+        <figcaption>📋 Metadata</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="🔐 Permissions" aria-label="View Permissions screenshot">
+          <img src="assets/screenshots/tab-permissions.png" alt="Permissions tab">
+        </button>
+        <figcaption>🔐 Permissions</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="🧩 Components" aria-label="View Components screenshot">
+          <img src="assets/screenshots/tab-components.png" alt="Components tab">
+        </button>
+        <figcaption>🧩 Components</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="↳ Component Names" aria-label="View Component Names screenshot">
+          <img src="assets/screenshots/tab-component-names.png" alt="Component Names tab">
+        </button>
+        <figcaption>↳ Component Names</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="📁 Contents" aria-label="View Contents screenshot">
+          <img src="assets/screenshots/tab-contents.png" alt="Contents tab">
+        </button>
+        <figcaption>📁 Contents</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="✍ Signing" aria-label="View Signing screenshot">
+          <img src="assets/screenshots/tab-signing.png" alt="Signing tab">
+        </button>
+        <figcaption>✍ Signing</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="🏅 Certificate" aria-label="View Certificate screenshot">
+          <img src="assets/screenshots/tab-certificate.png" alt="Certificate tab">
+        </button>
+        <figcaption>🏅 Certificate</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="⚙ Native Libs" aria-label="View Native Libs screenshot">
+          <img src="assets/screenshots/tab-native-libs.png" alt="Native Libs tab">
+        </button>
+        <figcaption>⚙ Native Libs</figcaption>
+      </figure>
+      <figure class="screenshot-card">
+        <button type="button" class="screenshot-thumb" data-caption="🔍 Strings" aria-label="View Strings screenshot">
+          <img src="assets/screenshots/tab-strings.png" alt="Strings tab">
+        </button>
+        <figcaption>🔍 Strings</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="platforms">
+  <div class="container section-intro">
+    <span class="section-label">Platforms</span>
+    <h2>Ubuntu now. More platforms soon.</h2>
+    <p class="lead">
+      APK Inspector currently integrates with Ubuntu's Nautilus file manager.
+      Windows Explorer and macOS Finder support are planned next.
+    </p>
+
+    <div class="card-grid grid-3">
+      <div class="platform-card available">
+        <div class="card-icon">🐧</div>
+        <h3>Ubuntu / Nautilus</h3>
+        <p>Right-click → Scripts → Get APK Details</p>
+        <span class="status status-live">Available</span>
+      </div>
+      <div class="platform-card soon">
+        <div class="card-icon">🪟</div>
+        <h3>Windows Explorer</h3>
+        <p>Context menu integration</p>
+        <span class="status status-soon">Coming soon</span>
+      </div>
+      <div class="platform-card soon">
+        <div class="card-icon">🍎</div>
+        <h3>macOS Finder</h3>
+        <p>Finder service integration</p>
+        <span class="status status-soon">Coming soon</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="container section-intro">
+    <span class="section-label">Install</span>
+    <h2>Get started</h2>
+    <p class="lead">Clone the repository, run the installer, then use Scripts → Get APK Details on any APK file.</p>
+
+    <div class="install-block">
+      <pre><span class="comment"># Clone</span>
+git clone https://github.com/bhardwajAbhi/apk-inspector.git
+cd apk-inspector
+
+<span class="comment"># Install</span>
+bash install.sh
+
+<span class="comment"># Manual test</span>
+python3 ~/.local/share/apk-inspector/apk_inspector.py /path/to/sample.apk</pre>
+    </div>
+
+    <div class="hero-buttons section-buttons">
+      <a href="https://github.com/bhardwajAbhi/apk-inspector" class="btn btn-primary" target="_blank" rel="noopener">GitHub Repository</a>
+      <a href="https://github.com/bhardwajAbhi/apk-inspector#-dependencies" class="btn btn-outline" target="_blank" rel="noopener">Dependencies</a>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="container section-intro">
+    <span class="section-label">FAQ</span>
+    <h2>Common questions</h2>
+    <p class="lead">Quick answers for installation, usage, and platform support.</p>
+
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>How do I access APK Inspector after installing?</summary>
+        <div class="faq-body">
+          <p>Once <code>install.sh</code> has finished:</p>
+          <ol>
+            <li>Open <strong>Files (Nautilus)</strong></li>
+            <li>Navigate to any <code>.apk</code> file</li>
+            <li><strong>Right-click</strong> the file</li>
+            <li>Hover over <strong>Scripts</strong></li>
+            <li>Click <strong>Get APK Details</strong></li>
+          </ol>
+          <figure class="faq-screenshot">
+            <button type="button" class="screenshot-thumb screenshot-thumb--faq" data-caption="Scripts → Get APK Details" aria-label="View context menu screenshot">
+              <img src="assets/screenshots/context-menu.png" alt="Scripts submenu — Get APK Details">
+            </button>
+            <figcaption>Scripts → Get APK Details</figcaption>
+          </figure>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Why don't I see "Get APK Details" under Scripts?</summary>
+        <div class="faq-body">
+          <p>Re-run the installer and restart Nautilus:</p>
+          <pre>bash install.sh
+nautilus -q</pre>
+          <p>Confirm the script exists:</p>
+          <pre>ls -l ~/.local/share/nautilus/scripts/"Get APK Details"</pre>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Can I run it without the file manager?</summary>
+        <div class="faq-body">
+          <p>Yes. Pass an APK path directly:</p>
+          <pre>python3 ~/.local/share/apk-inspector/apk_inspector.py /path/to/sample.apk</pre>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Will Windows and Mac be supported?</summary>
+        <div class="faq-body">
+          <p>Ubuntu / Nautilus is available today. Windows Explorer and macOS Finder integrations are on the roadmap.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>
+      Made by <a href="https://github.com/bhardwajAbhi" target="_blank" rel="noopener">Abhishek Bhardwaj</a>
+      · <a href="https://github.com/bhardwajAbhi" target="_blank" rel="noopener">github.com/bhardwajAbhi</a>
+    </p>
+  </div>
+</footer>
+
+<div id="lightbox" class="lightbox" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Screenshot preview">
+  <button type="button" class="lightbox-backdrop" aria-label="Close preview"></button>
+  <button type="button" class="lightbox-nav lightbox-prev" aria-label="Previous screenshot">&#8249;</button>
+  <button type="button" class="lightbox-nav lightbox-next" aria-label="Next screenshot">&#8250;</button>
+  <div class="lightbox-dialog">
+    <button type="button" class="lightbox-close" aria-label="Close">&times;</button>
+    <img class="lightbox-img" src="" alt="">
+    <p class="lightbox-caption"></p>
+    <p class="lightbox-counter"></p>
+  </div>
+</div>
+
+<script src="js/lightbox.js"></script>
+</body>
+</html>
