@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────────────────────────
+#  APK Inspector – Nautilus Script
+#  Place in: ~/.local/share/nautilus/scripts/
+#  This is the bridge between Nautilus right-click and the Python GUI.
+# ──────────────────────────────────────────────────────────────────────────────
+
+SCRIPT_DIR="$HOME/.local/share/apk-inspector"
+INSPECTOR="$SCRIPT_DIR/apk_inspector.py"
+
+# NAUTILUS_SCRIPT_SELECTED_FILE_PATHS contains newline-separated paths
+# We process each selected APK file
+while IFS= read -r filepath; do
+    [[ -z "$filepath" ]] && continue
+    [[ "${filepath,,}" != *.apk ]] && continue
+
+    # Launch the GUI (detached so Nautilus doesn't freeze)
+    python3 "$INSPECTOR" "$filepath" &
+done <<< "$NAUTILUS_SCRIPT_SELECTED_FILE_PATHS"

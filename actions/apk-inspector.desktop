@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Action
+Name=Get APK Details
+Icon=utilities-terminal
+Tooltip=Parse and display APK metadata, permissions, signing info, and more
+
+Profiles=profile-apk;
+
+[X-Action-Profile profile-apk]
+MimeTypes=application/vnd.android.package-archive;
+SelectionCount=any
+Exec=python3 /home/%u/.local/share/apk-inspector/apk_inspector.py %f
+Name=Get APK Details
